@@ -1,6 +1,16 @@
+const { fromEvent, interval } = rxjs;
+const { map, mapTo, merge, scan, tap, takeWhile, finalize } = rxjs.operators;
+
 const boardSize = 300;
 const tiles = 20;
 const tileSize = boardSize / tiles;
+const initialState = {
+  tails: 5,
+  snake: [[0, 0]],
+  apple: [10, 5],
+  vx: 1,
+  vy: 0
+};
 
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
@@ -9,33 +19,29 @@ const startGame = () => {
   ctx.fillStyle = "lightgrey";
   ctx.fillRect(0, 0, boardSize, boardSize);
 
-  let state = {
-    tails: 5,
-    snake: [[0, 0]],
-    apple: newApple(),
-    vx: 1,
-    vy: 0
-  };
-
   const update = createUpdate();
 
-  document.addEventListener("keydown", event => {
-    const [vx, vy] = keyPush(event);
-    state.vx = vx;
-    state.vy = vy;
-  });
+  const ticks = interval(100).pipe(mapTo({ type: "tick" }));
 
-  const loop = () => {
-    const nextState = game(state);
-    if (isCollision(nextState.snake)) {
-      return endGame();
-    }
-    update(nextState);
-    state = nextState;
-    setTimeout(loop, 100);
-  };
+  const keys = fromEvent(document, "keydown")
+    .pipe(map(keyPush))
+    .pipe(map(d => ({ type: "speed", d })));
 
-  loop();
+  ticks
+    .pipe(merge(keys))
+    .pipe(
+      scan((state, action) => {
+        if (action.type === "speed") {
+          return { ...state, vx: action.d[0], vy: action.d[1] };
+        } else if (action.type === "tick") {
+          return game(state);
+        }
+        return state;
+      }, initialState)
+    )
+    .pipe(takeWhile(state => !isCollision(state.snake)))
+    .pipe(finalize(endGame))
+    .subscribe(update);
 };
 
 const endGame = () => {
