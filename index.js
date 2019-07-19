@@ -1,5 +1,14 @@
 const { fromEvent, interval } = rxjs;
-const { map, mapTo, merge, scan, tap, takeWhile, finalize } = rxjs.operators;
+const {
+  map,
+  mapTo,
+  merge,
+  scan,
+  tap,
+  filter,
+  takeWhile,
+  finalize
+} = rxjs.operators;
 
 const boardSize = 300;
 const tiles = 20;
@@ -12,7 +21,6 @@ const initialState = {
   vy: 0
 };
 
-
 const startGame = () => {
   clear();
   const render = createRender();
@@ -21,7 +29,8 @@ const startGame = () => {
 
   const keys = fromEvent(document, "keydown")
     .pipe(map(keyPush))
-    .pipe(map(d => ({ type: "speed", d })));
+    .pipe(filter(x => x))
+    .pipe(map(d => ({ type: "speed", d })))
 
   ticks
     .pipe(merge(keys))
@@ -90,7 +99,6 @@ const game = state => {
   }
   return nextState;
 };
-
 
 const keyPush = evt => {
   switch (evt.keyCode) {
